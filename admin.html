@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>دخول الأدمن</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+font-family:Arial,sans-serif;background:linear-gradient(135deg,#0f172a,#1e293b);padding:20px}
+.card{width:min(420px,100%);background:#fff;border-radius:22px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.28)}
+h1{margin:0 0 8px;text-align:center;font-size:28px}.sub{text-align:center;color:#64748b;margin-bottom:25px}
+label{display:block;margin:12px 0 7px;font-weight:700}.field{position:relative}
+input{width:100%;padding:14px;border:1px solid #cbd5e1;border-radius:12px;font-size:16px;outline:none}
+input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.eye{position:absolute;left:10px;top:50%;transform:translateY(-50%);border:0;background:none;cursor:pointer;font-size:18px}
+button.login{width:100%;margin-top:20px;padding:14px;border:0;border-radius:12px;background:#2563eb;color:white;font-size:17px;font-weight:700;cursor:pointer}
+.err{display:none;color:#dc2626;background:#fee2e2;padding:10px;border-radius:10px;margin-top:14px;text-align:center}
+.note{text-align:center;color:#94a3b8;font-size:12px;margin-top:18px}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>🔐 دخول الأدمن</h1>
+  <div class="sub">سجّل الدخول لإدارة الحجوزات والعملاء</div>
+  <label>اسم المستخدم</label>
+  <input id="user" autocomplete="username" placeholder="اسم المستخدم">
+  <label>كلمة المرور</label>
+  <div class="field">
+    <input id="pass" type="password" autocomplete="current-password" placeholder="كلمة المرور">
+    <button class="eye" type="button" onclick="togglePass()">👁️</button>
+  </div>
+  <button class="login" onclick="login()">تسجيل الدخول</button>
+  <div id="err" class="err">اسم المستخدم أو كلمة المرور غير صحيحة</div>
+  <div class="note">تسجيل الدخول يتم التحقق منه من خلال السيرفر وقاعدة البيانات.</div>
+</div>
+<script>
+if(sessionStorage.getItem("adminToken")) location.href="admin-panel.html";
+function togglePass(){const p=document.getElementById('pass');p.type=p.type==='password'?'text':'password';}
+async function login(){
+  const u=document.getElementById('user').value.trim(), p=document.getElementById('pass').value;
+  const err=document.getElementById('err'); err.style.display='none';
+  try{
+    const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+    const data=await r.json();
+    if(!r.ok) throw new Error(data.error||'فشل تسجيل الدخول');
+    sessionStorage.setItem('adminToken',data.token); location.href='admin-panel.html';
+  }catch(e){err.textContent=e.message;err.style.display='block';}
+}
+document.addEventListener('keydown',e=>{if(e.key==='Enter')login()});
+</script>
+</body>
+</html>
