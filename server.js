@@ -23,7 +23,7 @@ app.use(express.static(__dirname));
 
 async function initDb() {
   if (!process.env.DATABASE_URL) {
-    console.warn('DATABASE_URL is missing. Set it in Render.');
+    console.warn('DATABASE_URL is missing.');
     return;
   }
 
@@ -83,6 +83,7 @@ app.get('/api/health', async (_req, res) => {
     });
   } catch (error) {
     console.error(error);
+
     res.status(503).json({
       ok: false,
       database: false
@@ -121,6 +122,7 @@ app.post('/api/auth/login', async (req, res) => {
     res.json({ token });
   } catch (error) {
     console.error(error);
+
     res.status(500).json({
       error: 'حدث خطأ في تسجيل الدخول'
     });
@@ -130,6 +132,12 @@ app.post('/api/auth/login', async (req, res) => {
 // جلب الحجوزات
 app.get('/api/requests', auth, async (_req, res) => {
   try {
+    if (!process.env.DATABASE_URL) {
+      return res.status(503).json({
+        error: 'قاعدة البيانات غير متصلة'
+      });
+    }
+
     const { rows } = await pool.query(`
       SELECT
         id,
@@ -155,7 +163,10 @@ app.get('/api/requests', auth, async (_req, res) => {
     );
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'حدث خطأ في جلب الحجوزات' });
+
+    res.status(500).json({
+      error: 'حدث خطأ في جلب الحجوزات'
+    });
   }
 });
 
@@ -202,6 +213,7 @@ app.post('/api/requests', async (req, res) => {
     res.status(201).json(rows[0]);
   } catch (error) {
     console.error(error);
+
     res.status(500).json({
       error: 'حدث خطأ أثناء إنشاء الحجز'
     });
@@ -211,6 +223,12 @@ app.post('/api/requests', async (req, res) => {
 // تعديل حجز
 app.put('/api/requests/:id', auth, async (req, res) => {
   try {
+    if (!process.env.DATABASE_URL) {
+      return res.status(503).json({
+        error: 'قاعدة البيانات غير متصلة'
+      });
+    }
+
     const {
       name,
       phone,
@@ -271,6 +289,7 @@ app.put('/api/requests/:id', auth, async (req, res) => {
     res.json(rows[0]);
   } catch (error) {
     console.error(error);
+
     res.status(500).json({
       error: 'حدث خطأ أثناء تعديل الحجز'
     });
@@ -280,6 +299,12 @@ app.put('/api/requests/:id', auth, async (req, res) => {
 // حذف حجز
 app.delete('/api/requests/:id', auth, async (req, res) => {
   try {
+    if (!process.env.DATABASE_URL) {
+      return res.status(503).json({
+        error: 'قاعدة البيانات غير متصلة'
+      });
+    }
+
     const result = await pool.query(
       'DELETE FROM requests WHERE id = $1',
       [req.params.id]
@@ -294,6 +319,7 @@ app.delete('/api/requests/:id', auth, async (req, res) => {
     res.status(204).end();
   } catch (error) {
     console.error(error);
+
     res.status(500).json({
       error: 'حدث خطأ أثناء حذف الحجز'
     });
@@ -303,10 +329,18 @@ app.delete('/api/requests/:id', auth, async (req, res) => {
 // حذف جميع الحجوزات
 app.delete('/api/requests', auth, async (_req, res) => {
   try {
+    if (!process.env.DATABASE_URL) {
+      return res.status(503).json({
+        error: 'قاعدة البيانات غير متصلة'
+      });
+    }
+
     await pool.query('DELETE FROM requests');
+
     res.status(204).end();
   } catch (error) {
     console.error(error);
+
     res.status(500).json({
       error: 'حدث خطأ أثناء حذف الحجوزات'
     });
@@ -316,6 +350,12 @@ app.delete('/api/requests', auth, async (_req, res) => {
 // جلب حالة التوفر
 app.get('/api/settings/availability', auth, async (_req, res) => {
   try {
+    if (!process.env.DATABASE_URL) {
+      return res.status(503).json({
+        error: 'قاعدة البيانات غير متصلة'
+      });
+    }
+
     const { rows } = await pool.query(
       'SELECT value FROM settings WHERE key = $1',
       ['availability']
@@ -326,6 +366,7 @@ app.get('/api/settings/availability', auth, async (_req, res) => {
     });
   } catch (error) {
     console.error(error);
+
     res.status(500).json({
       error: 'حدث خطأ'
     });
@@ -335,6 +376,12 @@ app.get('/api/settings/availability', auth, async (_req, res) => {
 // تعديل حالة التوفر
 app.put('/api/settings/availability', auth, async (req, res) => {
   try {
+    if (!process.env.DATABASE_URL) {
+      return res.status(503).json({
+        error: 'قاعدة البيانات غير متصلة'
+      });
+    }
+
     const value = String(req.body?.value || '').trim();
 
     await pool.query(
@@ -350,6 +397,7 @@ app.put('/api/settings/availability', auth, async (req, res) => {
     res.json({ value });
   } catch (error) {
     console.error(error);
+
     res.status(500).json({
       error: 'حدث خطأ أثناء حفظ الإعداد'
     });
@@ -361,14 +409,16 @@ app.get('/admin-panel.html', (_req, res) => {
   res.sendFile(path.join(__dirname, 'admin-panel.html'));
 });
 
-// تشغيل السيرفر
-initDb()
-  .then(() => {
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`Sergany backend running on port ${PORT}`);
+// تشغيل السيرفر أولاً
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Sergany backend running on port ${PORT}`);
+
+  // تشغيل قاعدة البيانات بعد فتح الـ Port
+  initDb()
+    .then(() => {
+      console.log('Database initialized successfully');
+    })
+    .catch((error) => {
+      console.error('Failed to initialize database:', error);
     });
-  })
-  .catch((error) => {
-    console.error('Failed to initialize database:', error);
-    process.exit(1);
-  });
+});
